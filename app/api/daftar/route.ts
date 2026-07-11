@@ -50,9 +50,6 @@ export async function POST(req: Request) {
       data: { status: newStatus }
     });
 
-    // Masukkan ke Group WA Kos-kosan secara otomatis
-    const { addTenantToGroup } = require('@/lib/wa');
-    addTenantToGroup(waNumber).catch((err: any) => console.error("Gagal auto-add WAG:", err));
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -124,40 +124,6 @@ export const sendWaMessage = async (to: string, message: string, mediaPath?: str
   }
 };
 
-// Fungsi untuk memasukkan nomor ke Group WA Kos-kosan secara otomatis
-export const addTenantToGroup = async (waNumber: string) => {
-  try {
-    if (!globalForWa.isReady) {
-      console.log("⚠️ WA Client tidak aktif, melewati proses undang ke grup.");
-      return;
-    }
-    const groupId = process.env.WA_GROUP_ID;
-    if (!groupId) {
-      console.log("⚠️ WA_GROUP_ID tidak ditemukan di environment variable.");
-      return;
-    }
-
-    let formattedNumber = waNumber.replace(/\D/g, '');
-    if (formattedNumber.startsWith('0')) {
-      formattedNumber = '62' + formattedNumber.substring(1);
-    }
-    const participantId = `${formattedNumber}@c.us`;
-
-    const chat = await waClient.getChatById(groupId);
-    if (chat.isGroup) {
-      await groupChat.addParticipants([participantId]);
-      console.log(`✅ Berhasil menambahkan ${participantId} ke group ${groupId}`);
-      
-      // Tunggu sebentar agar sistem WA selesai memproses penambahan
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const welcomeMsg = `*ANGGOTA BARU DIRA KOS 🎉*\n\nHalo teman-teman penghuni, mari kita sambut anggota baru kos kita!\n\nSelamat datang *${name}*, mohon membaca dan mematuhi peraturan kos ya. Semoga betah tinggal di sini! 🙏✨`;
-      await waClient.sendMessage(groupId, welcomeMsg);
-    }
-  } catch (error) {
-    console.error("❌ Gagal menambahkan ke grup WA:", error);
-  }
-};
 
 // Fungsi untuk mengeluarkan nomor dari Group WA Kos-kosan secara otomatis
 export const removeTenantFromGroup = async (waNumber: string) => {

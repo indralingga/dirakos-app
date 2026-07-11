@@ -20,9 +20,19 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
         data: { isActive: false }
     });
 
+    // Sesuaikan status kamar berdasarkan sisa penghuni aktif
+    const remainingTenants = await prisma.tenant.count({
+        where: { 
+            roomId: tenant.roomId, 
+            isActive: true,
+            id: { not: params.id }
+        }
+    });
+
+    const newRoomStatus = remainingTenants >= 1 ? 'TERISI_SENDIRI' : 'KOSONG';
     await prisma.room.update({
         where: { id: tenant.roomId },
-        data: { status: 'KOSONG' }
+        data: { status: newRoomStatus }
     });
 
     const checkIn = new Date(tenant.checkInDate);

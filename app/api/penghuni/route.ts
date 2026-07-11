@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
-import { addTenantToGroup, sendWaMessage } from '@/lib/wa';
+import { sendWaMessage } from '@/lib/wa';
 
 export async function POST(req: Request) {
   try {
@@ -55,17 +55,8 @@ export async function POST(req: Request) {
         data: { status: newStatus }
     });
 
-    // 1. Masukkan ke Group WA Kos-kosan secara otomatis
-    addTenantToGroup(waNumber).catch((err: any) => console.error("Gagal auto-add WAG:", err));
 
-    // 2. Kirim salam selamat datang ke GROUP WA KOS
-    const groupId = process.env.WA_GROUP_ID;
-    if (groupId) {
-        const welcomeGroupMsg = `*ANGGOTA BARU DIRA KOS* 🎉\n\nHalo teman-teman penghuni, mari kita sambut *${name}* yang baru saja check-in dan bergabung di keluarga Dira Kos! \n\nSelamat datang *${name}*, mohon membaca dan mematuhi aturan kos-kosan yang tertera di bagian **Deskripsi Grup** ya. Semoga betah tinggal di sini! 🙏✨`;
-        sendWaMessage(groupId, welcomeGroupMsg).catch((err: any) => console.error("Gagal kirim welcome ke grup:", err));
-    }
-
-    // 3. Kirim link pengisian data (KTP & Kontak Darurat) secara pribadi (Japri) ke penghuni baru
+    // Kirim link pengisian data (KTP & Kontak Darurat) secara pribadi (Japri) ke penghuni baru
     const lengkapDataUrl = `https://dirakos.indralingga.my.id/lengkap-data/${newTenant.id}`;
     const japriMsg = `*LENGKAPI DATA PENGHUNI DIRA KOS* 📋\n\nHalo *${name}*,\n\nSelamat datang di Dira Kos! Anda telah terdaftar di sistem kami.\n\nUntuk keperluan pelaporan administrasi ke pengurus RT setempat, mohon melengkapi foto KTP dan nomor kontak darurat Anda secara mandiri melalui link aman berikut ini:\n\n🔗 *Link Pengisian:* ${lengkapDataUrl}\n\n🔒 *Jaminan Keamanan Data:* Data KTP Anda disimpan secara aman di server pribadi Indra R. Lingga untuk pelaporan RT, dan akan terhapus secara otomatis & permanen dari server pada saat Anda Check-Out dari kosan.\n\nTerima kasih atas kerja samanya! 🙏`;
     
