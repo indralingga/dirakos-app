@@ -1,0 +1,241 @@
+:root {
+  --primary: #4F46E5;
+  --primary-hover: #4338CA;
+  --bg-color: #F3F4F6;
+  --sidebar-bg: #1F2937;
+  --text-main: #111827;
+  --text-muted: #6B7280;
+  --card-bg: #FFFFFF;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  line-height: 1.5;
+}
+
+.layout-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Sidebar Styles */
+.sidebar {
+  width: 250px;
+  background-color: var(--sidebar-bg);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100vh;
+  transition: all 0.3s ease;
+}
+
+.sidebar-header {
+  padding: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+.sidebar-nav {
+  padding: 1rem 0;
+  flex: 1;
+}
+
+.nav-item {
+  display: block;
+  padding: 1rem 1.5rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover, .nav-item.active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left: 4px solid var(--primary);
+}
+
+/* Main Content Styles */
+.main-content {
+  flex: 1;
+  margin-left: 250px;
+  padding: 2rem;
+}
+
+.page-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: var(--text-main);
+}
+
+/* Dashboard Cards */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background-color: var(--card-bg);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.stat-title {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.stat-value.success { color: var(--success); }
+.stat-value.warning { color: var(--warning); }
+.stat-value.danger { color: var(--danger); }
+
+/* Tables */
+.table-container {
+  background: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th, .data-table td {
+  padding: 1rem 1.5rem;
+  text-align: left;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.data-table th {
+  background-color: #F9FAFB;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.data-table tr:hover {
+  background-color: #F9FAFB;
+}
+
+/* Badges */
+.badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-success { background-color: #D1FAE5; color: #065F46; }
+.badge-warning { background-color: #FEF3C7; color: #92400E; }
+.badge-danger { background-color: #FEE2E2; color: #991B1B; }
+
+/* Responsive Mobile Layout */
+@media (max-width: 768px) {
+  .layout-container {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  
+  .sidebar-header {
+    flex-direction: row !important;
+    justify-content: center;
+    padding: 1rem;
+    gap: 1rem !important;
+  }
+  
+  .sidebar-header img {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  
+  .sidebar-header h2 {
+    font-size: 1.2rem !important;
+  }
+  
+  .sidebar-nav {
+    display: flex;
+    overflow-x: auto;
+    padding: 0;
+    white-space: nowrap;
+    /* Menyembunyikan scrollbar tapi tetap bisa di-scroll */
+    -ms-overflow-style: none;  
+    scrollbar-width: none;  
+  }
+  .sidebar-nav::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .nav-item {
+    display: inline-block;
+    padding: 0.75rem 1rem;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+  }
+  
+  .nav-item:hover, .nav-item.active {
+    border-left: none;
+    border-bottom: 3px solid var(--primary);
+  }
+  
+  .main-content {
+    margin-left: 0;
+    padding: 1rem;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .page-title {
+    font-size: 1.5rem;
+  }
+}

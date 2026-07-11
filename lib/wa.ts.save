@@ -1,0 +1,72 @@
+import { Client, LocalAuth, MessageMedia } from 'whatsapp-web.js';
+import { startCronJobs } from './cron';
+import fs from 'fs';
+
+const globalForWa = global as unknown as { 
+  waClient: Client, 
+  qrCodeData: string, 
+  isReady: boolean,
+  isInitializing: boolean
+};
+
+export const waClient = globalForWa.waClient || new Client({
+    authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
+    puppeteer: {
+        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
+});
+
+if (!globalForWa.isInitializing) {
+  globalForWa.isInitializing = true;
+  globalForWa.qrCodeData = "";
+  globalForWa.isReady = false;
+
+  waClient.on('qr', (qr) => {
+      console.log("QR Code received");
+      globalForWa.qrCodeData = qr;
+  });
+
+  waClient.on('ready', () => {
+      globalForWa.isReady = true;
+      globalForWa.qrCodeData = "";
+      console.log('✅ WA Client is ready!');
+      startCronJobs();
+  });
+
+  waClient.on('authenticated', () => {
+      console.log('✅ WA Authenticated');
+  });
+
+  waClient.on('auth_failure', msg => {
+      console.error('❌ WA Authentication failure', msg);
+      globalForWa.isReady = false;
+  });
+
+  waClient.initialize().catch(err => console.error("WA Init error:", err));
+}
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForWa.waClient = waClient;
+}
+
+export const getWaStatus = () => {
+  return { 
+    isReady: globalForWa.isReady, 
+    qrCodeData: globalForWa.qrCodeData 
+  };
+};
+
+export const sendWaMessage = async (to: string, message: string, mediaPath?: string) => {
+  if (!globalForWa.isReady) {
+    throw new Error("WhatsApp Client is not ready yet.");
+  }
+  // Format nomor WA ke format internasional
+  let formattedNumber = to.replace(/\D/g, '');
+  if (formattedNumber.startsWith('0')) {
+    formattedNumber = '62' + formattedNumber.substring(1);
+  }
+  const chatId = `${formattedNumber}@c.us`;
+  
+  if (mediaPath) {
+    cons

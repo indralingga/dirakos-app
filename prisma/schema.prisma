@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Room {
+  id           String   @id @default(uuid())
+  roomNumber   String   @unique
+  priceSingle  Int
+  priceDouble  Int
+  plnId        String?
+  status       String   @default("KOSONG") // KOSONG, TERISI
+  tenants      Tenant[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Tenant {
+  id             String    @id @default(uuid())
+  roomId         String
+  room           Room      @relation(fields: [roomId], references: [id])
+  name           String
+  waNumber       String
+  checkInDate    DateTime
+  emergencyName  String?
+  emergencyWa    String?
+  ktpPhoto       String?
+  ktpFile        String?
+  depositStatus  String    @default("BELUM_LUNAS") // BELUM_LUNAS, LUNAS, DIKEMBALIKAN
+  isActive       Boolean   @default(true)
+  payments       Payment[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  paymentType   String   // SEWA, DEPOSIT
+  amount        Int
+  month         String   // e.g., 2026-05
+  status        String   @default("LUNAS") // LUNAS, NUNGGAK
+  receiptPhoto  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
