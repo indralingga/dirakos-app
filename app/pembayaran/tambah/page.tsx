@@ -6,7 +6,13 @@ export const dynamic = 'force-dynamic';
 export default async function TambahPembayaranPage() {
   const activeTenants = await prisma.tenant.findMany({
     where: { isActive: true },
-    include: { room: true },
+    include: { 
+      room: true,
+      payments: {
+        where: { paymentType: 'SEWA' },
+        orderBy: { createdAt: 'desc' }
+      }
+    },
     orderBy: { name: 'asc' }
   });
 

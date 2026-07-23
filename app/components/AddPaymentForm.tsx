@@ -5,9 +5,84 @@ import { useState } from 'react';
 type Tenant = {
   id: string;
   name: string;
-  checkInDate: Date;
+  checkInDate: Date | string;
   room: { roomNumber: string; priceSingle: number; priceDouble: number; status: string };
+  payments?: { paymentType: string; month: string; createdAt: string | Date }[];
 };
+
+const INDO_MONTHS: { [key: string]: number } = {
+  'januari': 0, 'februari': 1, 'maret': 2, 'april': 3, 'mei': 4, 'juni': 5,
+  'juli': 6, 'agustus': 7, 'september': 8, 'oktober': 9, 'november': 10, 'desember': 11
+};
+
+function parseIndoDate(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  const cleaned = dateStr.trim().toLowerCase();
+  
+  // Format dd/mm/yyyy
+  if (cleaned.includes('/')) {
+    const parts = cleaned.split('/');
+    if (parts.length >= 3) {
+      const d = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const y = parseInt(parts[2], 10);
+      if (!isNaN(d) && !isNaN(m) && !isNaN(y)) {
+        return new Date(y, m - 1, d);
+      }
+    }
+  }
+  
+  // Format dd Bulan yyyy (e.g. "24 Juli 2026")
+  const match = cleaned.match(/^(\d+)\s+([a-z]+)\s+(\d+)$/);
+  if (match) {
+    const day = parseInt(match[1], 10);
+    const monthName = match[2];
+    const year = parseInt(match[3], 10);
+    const monthIndex = INDO_MONTHS[monthName];
+    if (monthIndex !== undefined && !isNaN(day) && !isNaN(year)) {
+      return new Date(year, monthIndex, day);
+    }
+  }
+  return null;
+}
+
+function calculateSuggestedPeriod(tenant: Tenant): string {
+  const formatDate = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  const checkIn = new Date(tenant.checkInDate);
+
+  // Jika ada riwayat pembayaran sewa, cari pembayaran sewa terbaru
+  if (tenant.payments && tenant.payments.length > 0) {
+    const sewaPayments = tenant.payments.filter(p => p.paymentType === 'SEWA');
+    if (sewaPayments.length > 0) {
+      const latestPayment = sewaPayments[0]; // Diurutkan desc dari database
+      
+      const parts = latestPayment.month.split(' - ');
+      if (parts.length >= 2) {
+        const lastEndDate = parseIndoDate(parts[1]);
+        if (lastEndDate) {
+          const nextStart = new Date(lastEndDate);
+          const nextEnd = new Date(nextStart);
+          nextEnd.setMonth(nextEnd.getMonth() + 1);
+          return `${formatDate(nextStart)} - ${formatDate(nextEnd)}`;
+        }
+      }
+    }
+  }
+
+  // Fallback ke logika standard (berdasarkan check-in dan tanggal hari ini)
+  const dueDay = checkIn.getDate();
+  const today = new Date();
+  
+  let cycleStart = new Date(today.getFullYear(), today.getMonth(), dueDay);
+  if (today.getDate() < dueDay) {
+    cycleStart.setMonth(cycleStart.getMonth() - 1);
+  }
+  
+  const nextMonth = new Date(cycleStart);
+  nextMonth.setMonth(nextMonth.getMonth() + 1);
+  
+  return `${formatDate(cycleStart)} - ${formatDate(nextMonth)}`;
+}
 
 export default function AddPaymentForm({ activeTenants }: { activeTenants: Tenant[] }) {
   const [formData, setFormData] = useState({
@@ -28,23 +103,7 @@ export default function AddPaymentForm({ activeTenants }: { activeTenants: Tenan
     if (tenant) {
       if (formData.paymentType === 'SEWA') {
          defaultAmount = tenant.room.status === 'TERISI_BERDUA' ? tenant.room.priceDouble.toString() : tenant.room.priceSingle.toString();
-         
-         // Hitung periode aktif saat ini berdasarkan tanggal check-in dan tanggal sekarang
-         const checkIn = new Date(tenant.checkInDate);
-         const dueDay = checkIn.getDate();
-         const today = new Date();
-         
-         // Cari batas awal siklus sewa berjalan
-         let cycleStart = new Date(today.getFullYear(), today.getMonth(), dueDay);
-         if (today.getDate() < dueDay) {
-           cycleStart.setMonth(cycleStart.getMonth() - 1);
-         }
-         
-         const nextMonth = new Date(cycleStart);
-         nextMonth.setMonth(nextMonth.getMonth() + 1);
-         
-         const formatDate = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-         periodString = `${formatDate(cycleStart)} - ${formatDate(nextMonth)}`;
+         periodString = calculateSuggestedPeriod(tenant);
       } else {
          defaultAmount = '50000'; // Deposit
          periodString = 'Deposit Kunci Awal';
@@ -62,19 +121,7 @@ export default function AddPaymentForm({ activeTenants }: { activeTenants: Tenan
     if (tenant) {
       if (paymentType === 'SEWA') {
          defaultAmount = tenant.room.status === 'TERISI_BERDUA' ? tenant.room.priceDouble.toString() : tenant.room.priceSingle.toString();
-         const checkIn = new Date(tenant.checkInDate);
-         const dueDay = checkIn.getDate();
-         const today = new Date();
-         
-         let cycleStart = new Date(today.getFullYear(), today.getMonth(), dueDay);
-         if (today.getDate() < dueDay) {
-           cycleStart.setMonth(cycleStart.getMonth() - 1);
-         }
-         
-         const nextMonth = new Date(cycleStart);
-         nextMonth.setMonth(nextMonth.getMonth() + 1);
-         const formatDate = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-         periodString = `${formatDate(cycleStart)} - ${formatDate(nextMonth)}`;
+         periodString = calculateSuggestedPeriod(tenant);
       } else {
          defaultAmount = '50000';
          periodString = 'Deposit Kunci Awal';
