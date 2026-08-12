@@ -63,14 +63,27 @@ if (!globalForWa.isInitializing) {
       // KODE UNTUK MENGECEK NAMA GRUP & ID-nya:
       try {
           const chats = await waClient.getChats();
+
+          // Log Grup
           const groups = chats.filter(chat => chat.isGroup);
           console.log("\n========= BERIKUT DAFTAR GRUP WA ANDA =========");
+          if (groups.length === 0) console.log("(Tidak ada grup)");
           groups.forEach(g => {
               console.log(`NAMA: "${g.name}" | ID: ${g.id._serialized}`);
           });
           console.log("================================================\n");
+
+          // Log Saluran / Newsletter
+          const channels = chats.filter(chat => chat.id._serialized.endsWith('@newsletter'));
+          console.log("========= BERIKUT DAFTAR SALURAN WA ANDA =========");
+          if (channels.length === 0) console.log("(Tidak ada saluran)");
+          channels.forEach(c => {
+              console.log(`NAMA: "${c.name}" | ID: ${c.id._serialized}`);
+          });
+          console.log("===================================================\n");
+
       } catch (err) {
-          console.error("Gagal membaca daftar grup:", err);
+          console.error("Gagal membaca daftar grup/saluran:", err);
       }
 
       startCronJobs();
