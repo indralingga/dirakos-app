@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import EditEmergencyContact from '@/app/components/EditEmergencyContact';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,29 +63,11 @@ export default async function ProfilPenghuniPage(props: { params: Promise<{ id: 
         </div>
 
         <div style={{ flex: '1', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          <div style={{ backgroundColor: '#FEF2F2', padding: '2rem', borderRadius: '12px', border: '1px solid #FCA5A5' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#991B1B', borderBottom: '1px solid #FECACA', paddingBottom: '0.5rem' }}>
-              Kontak Darurat
-            </h2>
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              <div>
-                <p style={{ fontSize: '0.875rem', color: '#B91C1C', margin: 0 }}>Nama Keluarga</p>
-                <p style={{ fontSize: '1rem', fontWeight: 'bold', color: '#7F1D1D', margin: 0 }}>{tenant.emergencyName || '-'}</p>
-              </div>
-              <div>
-                <p style={{ fontSize: '0.875rem', color: '#B91C1C', margin: 0 }}>Nomor WhatsApp Darurat</p>
-                {tenant.emergencyWa ? (
-                  <p style={{ fontSize: '1rem', fontWeight: 'bold', margin: 0 }}>
-                    <a href={`https://wa.me/${tenant.emergencyWa.startsWith('0') ? '62' + tenant.emergencyWa.substring(1) : tenant.emergencyWa}`} target="_blank" rel="noopener noreferrer" style={{ color: '#7F1D1D', textDecoration: 'none' }}>
-                      {tenant.emergencyWa} &#x2197;
-                    </a>
-                  </p>
-                ) : (
-                  <p style={{ fontSize: '1rem', fontWeight: 'bold', color: '#7F1D1D', margin: 0 }}>-</p>
-                )}
-              </div>
-            </div>
-          </div>
+          <EditEmergencyContact
+            tenantId={tenant.id}
+            emergencyName={tenant.emergencyName}
+            emergencyWa={tenant.emergencyWa}
+          />
 
           <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1F2937', borderBottom: '1px solid #E5E7EB', paddingBottom: '0.5rem' }}>
