@@ -32,18 +32,34 @@ waClient.on('qr', () => {
 
 waClient.on('ready', async () => {
     console.log("✅ WhatsApp Client terhubung!");
-    console.log("⏳ Menunggu 3 detik agar sesi stabil...\n");
+    console.log("⏳ Menunggu 4 detik agar sesi stabil...\n");
 
-    // Jeda 3 detik agar sesi Puppeteer benar-benar siap
-    await new Promise(r => setTimeout(r, 3000));
+    await new Promise(r => setTimeout(r, 4000));
 
     try {
-        const chats = await waClient.getChats();
+        // Langsung akses internal WhatsApp Web Store via Puppeteer page
+        // Lebih stabil dibanding getChats() yang sering error di VPS
+        const allChats = await waClient.pupPage.evaluate(async () => {
+            const store = window.Store;
+            if (!store || !store.Chat) return [];
+            
+            const models = store.Chat.getModelsArray();
+            return models.map(chat => ({
+                id: chat.id ? chat.id._serialized : '',
+                name: chat.name || chat.formattedTitle || '(Tanpa Nama)',
+                isGroup: !!chat.isGroup,
+            }));
+        });
 
-        // ─── GRUP ───────────────────────────────────────────────
-        const groups = chats.filter(c => c.isGroup);
+        if (!allChats || allChats.length === 0) {
+            console.log("⚠️  Tidak ada data chat ditemukan. Coba tunggu beberapa saat lagi.\n");
+            process.exit(0);
+        }
+
+        // ─── GRUP (@g.us) ────────────────────────────────────────
+        const groups = allChats.filter(c => c.id.endsWith('@g.us'));
         console.log("╔══════════════════════════════════════════════════════╗");
-        console.log("║              DAFTAR GRUP WHATSAPP (@g.us)            ║");
+        console.log("║           DAFTAR GRUP WHATSAPP (@g.us)               ║");
         console.log("╚══════════════════════════════════════════════════════╝");
 
         if (groups.length === 0) {
@@ -51,13 +67,13 @@ waClient.on('ready', async () => {
         } else {
             groups.forEach((g, i) => {
                 console.log(`  [${i + 1}] ${g.name}`);
-                console.log(`       ID : ${g.id._serialized}`);
+                console.log(`       ID : ${g.id}`);
                 console.log("      ──────────────────────────────────────────────");
             });
         }
 
-        // ─── SALURAN / NEWSLETTER ────────────────────────────────
-        const channels = chats.filter(c => c.id && c.id._serialized && c.id._serialized.endsWith('@newsletter'));
+        // ─── SALURAN / NEWSLETTER (@newsletter) ─────────────────
+        const channels = allChats.filter(c => c.id.endsWith('@newsletter'));
         console.log("\n╔══════════════════════════════════════════════════════╗");
         console.log("║        DAFTAR SALURAN (CHANNEL @newsletter)          ║");
         console.log("╚══════════════════════════════════════════════════════╝");
@@ -67,12 +83,12 @@ waClient.on('ready', async () => {
         } else {
             channels.forEach((c, i) => {
                 console.log(`  [${i + 1}] ${c.name}`);
-                console.log(`       ID : ${c.id._serialized}`);
+                console.log(`       ID : ${c.id}`);
                 console.log("      ──────────────────────────────────────────────");
             });
         }
 
-        console.log("\n✅ Selesai! Salin ID yang dibutuhkan lalu paste ke file .env\n");
+        console.log(`\n✅ Selesai! Total: ${groups.length} grup, ${channels.length} saluran ditemukan.\n`);
 
     } catch (err) {
         console.error("❌ Gagal membaca data:", err.message || err);
