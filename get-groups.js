@@ -32,27 +32,37 @@ waClient.on('qr', () => {
 
 waClient.on('ready', async () => {
     console.log("✅ WhatsApp Client terhubung!");
-    console.log("⏳ Menunggu 4 detik agar sesi stabil...\n");
-
-    await new Promise(r => setTimeout(r, 4000));
+    console.log("⏳ Menunggu store chat WhatsApp selesai loading (maks 30 detik)...\n");
 
     try {
-        // Langsung akses internal WhatsApp Web Store via Puppeteer page
-        // Lebih stabil dibanding getChats() yang sering error di VPS
+        // Polling: cek setiap 2 detik sampai store punya data (maks 30 detik / 15 kali)
         const allChats = await waClient.pupPage.evaluate(async () => {
-            const store = window.Store;
-            if (!store || !store.Chat) return [];
-            
-            const models = store.Chat.getModelsArray();
-            return models.map(chat => ({
-                id: chat.id ? chat.id._serialized : '',
-                name: chat.name || chat.formattedTitle || '(Tanpa Nama)',
-                isGroup: !!chat.isGroup,
-            }));
+            for (let attempt = 0; attempt < 15; attempt++) {
+                await new Promise(r => setTimeout(r, 2000));
+
+                const store = window.Store;
+                if (!store || !store.Chat) continue;
+
+                const models = store.Chat.getModelsArray();
+                if (models && models.length > 0) {
+                    return models.map(chat => ({
+                        id: chat.id ? chat.id._serialized : '',
+                        name: chat.name || chat.formattedTitle || '(Tanpa Nama)',
+                        isGroup: !!chat.isGroup,
+                    }));
+                }
+
+                console.log = console.log; // dummy agar tidak di-strip optimizer
+            }
+            return []; // timeout
         });
 
         if (!allChats || allChats.length === 0) {
-            console.log("⚠️  Tidak ada data chat ditemukan. Coba tunggu beberapa saat lagi.\n");
+            console.log("❌ Timeout: Store WhatsApp tidak kunjung terisi.");
+            console.log("   Kemungkinan penyebab:");
+            console.log("   1. Nomor WA sedang tidak aktif / terhubung internet");
+            console.log("   2. Sesi WA sudah kadaluarsa (perlu scan QR ulang)");
+            console.log("   3. Chromium tidak mendukung versi WA Web terbaru\n");
             process.exit(0);
         }
 
