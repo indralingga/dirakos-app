@@ -35,6 +35,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Kamar tidak tersedia' }, { status: 400 });
     }
 
+    const ktpPath = fileName ? `/uploads/ktp/${fileName}` : null;
+
     const newTenant = await prisma.tenant.create({
         data: {
             roomId,
@@ -43,7 +45,8 @@ export async function POST(req: Request) {
             checkInDate: new Date(checkInDate),
             emergencyName: emergencyName || null,
             emergencyWa: emergencyWa || null,
-            ktpPhoto: fileName ? `/uploads/ktp/${fileName}` : null,
+            ktpPhoto: ktpPath,
+            ktpFile: ktpPath,
             depositStatus,
             isActive: true,
         }

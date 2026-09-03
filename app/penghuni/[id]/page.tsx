@@ -73,18 +73,21 @@ export default async function ProfilPenghuniPage(props: { params: Promise<{ id: 
             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1F2937', borderBottom: '1px solid #E5E7EB', paddingBottom: '0.5rem' }}>
               Dokumen KTP
             </h2>
-            {tenant.ktpPhoto ? (
-              <div style={{ textAlign: 'center' }}>
-                <a href={tenant.ktpPhoto} target="_blank" rel="noopener noreferrer">
-                  <img src={tenant.ktpPhoto} alt="KTP Penghuni" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', border: '1px solid #D1D5DB' }} />
-                </a>
-                <p style={{ fontSize: '0.875rem', color: '#6B7280', marginTop: '0.5rem' }}>Klik gambar untuk memperbesar</p>
-              </div>
-            ) : (
-              <p style={{ color: '#6B7280', fontStyle: 'italic', textAlign: 'center', padding: '2rem 0' }}>
-                Belum ada foto KTP yang diunggah.
-              </p>
-            )}
+            {(() => {
+              const ktpUrl = tenant.ktpPhoto || tenant.ktpFile;
+              return ktpUrl ? (
+                <div style={{ textAlign: 'center' }}>
+                  <a href={ktpUrl} target="_blank" rel="noopener noreferrer">
+                    <img src={ktpUrl} alt="KTP Penghuni" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', border: '1px solid #D1D5DB' }} />
+                  </a>
+                  <p style={{ fontSize: '0.875rem', color: '#6B7280', marginTop: '0.5rem' }}>Klik gambar untuk memperbesar</p>
+                </div>
+              ) : (
+                <p style={{ color: '#6B7280', fontStyle: 'italic', textAlign: 'center', padding: '2rem 0' }}>
+                  Belum ada foto KTP yang diunggah.
+                </p>
+              );
+            })()}
           </div>
         </div>
       </div>

@@ -22,6 +22,9 @@ export async function POST(req: Request) {
       const buffer = Buffer.from(await file.arrayBuffer());
       fileName = `${Date.now()}-${file.name.replace(/\s/g, '_')}`;
       const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'ktp');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
       fs.writeFileSync(path.join(uploadDir, fileName), buffer);
     }
 
@@ -29,6 +32,8 @@ export async function POST(req: Request) {
     if (!room || room.status !== 'KOSONG') {
       return NextResponse.json({ error: 'Maaf, kamar ini sudah tidak tersedia.' }, { status: 400 });
     }
+
+    const ktpPath = fileName ? `/uploads/ktp/${fileName}` : null;
 
     const newTenant = await prisma.tenant.create({
       data: {
@@ -38,7 +43,8 @@ export async function POST(req: Request) {
         checkInDate: new Date(checkInDate),
         emergencyName,
         emergencyWa,
-        ktpFile: fileName ? `/uploads/ktp/${fileName}` : null,
+        ktpPhoto: ktpPath,
+        ktpFile: ktpPath,
         depositStatus: 'BELUM_LUNAS',
         isActive: true,
       }

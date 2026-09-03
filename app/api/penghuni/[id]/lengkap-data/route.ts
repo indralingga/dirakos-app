@@ -39,7 +39,8 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
         data: {
             emergencyName: emergencyName || tenant.emergencyName,
             emergencyWa: emergencyWa || tenant.emergencyWa,
-            ktpPhoto: fileName
+            ktpPhoto: fileName,
+            ktpFile: fileName
         }
     });
 
