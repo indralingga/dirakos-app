@@ -4,7 +4,7 @@ import { sendWaMessage, getWaStatus } from '@/lib/wa';
 
 export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
   try {
-    const params = await props.props ? await props.props : await props.params;
+    const params = await props.params;
 
     if (!getWaStatus().isReady) {
       return NextResponse.json({ error: 'Bot WA belum aktif. Silakan scan QR Code di menu Bot WA terlebih dahulu.' }, { status: 400 });
