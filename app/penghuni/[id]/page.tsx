@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import EditEmergencyContact from '@/app/components/EditEmergencyContact';
+import ResendFormButton from '@/app/components/ResendFormButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,11 +20,16 @@ export default async function ProfilPenghuniPage(props: { params: Promise<{ id: 
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem', gap: '1rem' }}>
-        <Link href="/penghuni" style={{ textDecoration: 'none', color: '#4F46E5', fontWeight: 'bold' }}>
-          &larr; Kembali
-        </Link>
-        <h1 className="page-title" style={{ margin: 0 }}>Profil Penghuni</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <Link href="/penghuni" style={{ textDecoration: 'none', color: '#4F46E5', fontWeight: 'bold' }}>
+            &larr; Kembali
+          </Link>
+          <h1 className="page-title" style={{ margin: 0 }}>Profil Penghuni</h1>
+        </div>
+        {tenant.isActive && (
+          <ResendFormButton tenantId={tenant.id} tenantName={tenant.name} />
+        )}
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>

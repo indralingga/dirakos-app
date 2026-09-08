@@ -45,8 +45,22 @@ export default function TenantActions({ tenantId, isActive, tenantName }: { tena
     setLoading(false);
   };
 
+  const handleResendForm = async () => {
+    if (!confirm(`Kirim ulang link Form Registrasi Mandiri (Kontak Darurat & KTP) ke WA ${tenantName}?`)) return;
+    
+    setLoading(true);
+    const res = await fetch(`/api/penghuni/${tenantId}/resend-form`, { method: 'POST' });
+    if (res.ok) {
+      alert(`Link Form Registrasi Mandiri berhasil dikirim ke WA ${tenantName}!`);
+    } else {
+      const err = await res.json();
+      alert(err.error || "Gagal mengirim link ke WA");
+    }
+    setLoading(false);
+  };
+
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
       <a 
         href={`/penghuni/${tenantId}`}
         style={{ 
@@ -69,6 +83,19 @@ export default function TenantActions({ tenantId, isActive, tenantName }: { tena
         title="Kirim Pesan Tagihan WA"
       >
         Kirim Notif
+      </button>
+
+      <button 
+        onClick={handleResendForm} 
+        disabled={!isActive || loading}
+        style={{ 
+          backgroundColor: '#8B5CF6', color: 'white', border: 'none', padding: '0.4rem 0.8rem', 
+          borderRadius: '4px', cursor: isActive && !loading ? 'pointer' : 'not-allowed', 
+          fontSize: '0.75rem', opacity: isActive ? 1 : 0.5 
+        }}
+        title="Kirim Ulang Link Form Registrasi Mandiri (Kontak Darurat & Upload KTP)"
+      >
+        Form Mandiri
       </button>
 
       <button 
