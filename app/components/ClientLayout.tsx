@@ -7,7 +7,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   
   // Tentukan rute yang tidak perlu menampilkan Sidebar Admin
-  const isPublicPage = pathname === '/' || pathname === '/login' || pathname.startsWith('/daftar');
+  const isPublicPage = pathname === '/' || pathname === '/login' || pathname.startsWith('/daftar') || pathname.startsWith('/lengkap-data');
 
   return (
     <div className={isPublicPage ? "" : "layout-container"} style={isPublicPage ? { display: 'flex', minHeight: '100vh', flexDirection: 'column' } : {}}>

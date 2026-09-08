@@ -8,6 +8,8 @@ export function middleware(request: NextRequest) {
   path === '/' ||
   path === '/login' ||
   path.startsWith('/daftar') ||
+  path.startsWith('/lengkap-data') ||
+  path.startsWith('/uploads') ||
   path.startsWith('/api/auth') ||
   path.startsWith('/api/daftar') ||
   path.startsWith('/api/penghuni/');
@@ -27,6 +29,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|lengkap-data|_next/image|favicon.ico|logo.png|qris.jpg).*)',
+    '/((?!_next/static|lengkap-data|uploads|_next/image|favicon.ico|logo.png|qris.jpg).*)',
   ],
 };

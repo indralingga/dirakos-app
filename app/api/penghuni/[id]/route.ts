@@ -1,6 +1,28 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  try {
+    const params = await props.params;
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: params.id },
+      include: { room: true }
+    });
+
+    if (!tenant) {
+      return NextResponse.json({ error: 'Data penghuni tidak ditemukan' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      tenant,
+      name: `${tenant.name} (Kamar ${tenant.room?.roomNumber || '-'})`
+    });
+  } catch (error) {
+    console.error('Error fetching tenant:', error);
+    return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: Request, props: { params: Promise<{ id: string }> }) {
   try {
     const params = await props.params;

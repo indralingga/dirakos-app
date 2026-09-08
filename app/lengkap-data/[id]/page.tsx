@@ -36,19 +36,82 @@ export default function LengkapDataPage() {
     fetchTenant();
   }, [id]);
 
+  const compressImage = async (file: File): Promise<File> => {
+    if (!file.type.startsWith('image/')) return file;
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const maxWidth = 1600;
+          const maxHeight = 1600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+              const cleanName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+              const compressedFile = new File([blob], cleanName, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            },
+            'image/jpeg',
+            0.8
+          );
+        };
+        img.onerror = () => resolve(file);
+      };
+      reader.onerror = () => resolve(file);
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    const formData = new FormData();
-    formData.append('emergencyName', emergencyName);
-    formData.append('emergencyWa', emergencyWa);
-    if (ktpFile) {
-      formData.append('ktpFile', ktpFile);
-    }
-
     try {
+      let uploadFile = ktpFile;
+      if (ktpFile) {
+        uploadFile = await compressImage(ktpFile);
+      }
+
+      const formData = new FormData();
+      formData.append('emergencyName', emergencyName);
+      formData.append('emergencyWa', emergencyWa);
+      if (uploadFile) {
+        formData.append('ktpFile', uploadFile);
+      }
+
       const res = await fetch(`/api/penghuni/${id}/lengkap-data`, {
         method: 'POST',
         body: formData,
@@ -57,11 +120,22 @@ export default function LengkapDataPage() {
       if (res.ok) {
         setSuccess(true);
       } else {
-        const data = await res.json();
-        setError(data.error || 'Gagal mengirim data');
+        let errorMsg = 'Gagal mengirim data';
+        try {
+          const data = await res.json();
+          errorMsg = data.error || errorMsg;
+        } catch {
+          if (res.status === 413) {
+            errorMsg = 'Ukuran foto terlalu besar. Mohon pilih foto lain.';
+          } else {
+            errorMsg = `Gagal mengirim data (Status: ${res.status})`;
+          }
+        }
+        setError(errorMsg);
       }
-    } catch (err) {
-      setError('Terjadi kesalahan jaringan, silakan coba lagi.');
+    } catch (err: any) {
+      console.error('Submit error:', err);
+      setError(err?.message ? `Gagal mengirim data: ${err.message}` : 'Terjadi kesalahan jaringan, silakan coba lagi.');
     } finally {
       setLoading(false);
     }
