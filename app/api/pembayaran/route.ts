@@ -67,9 +67,37 @@ export async function POST(req: Request) {
       const waStatus = getWaStatus();
       if (waStatus.isReady) {
         const formattedAmount = new Intl.NumberFormat('id-ID').format(payment.amount);
-        const msgType = data.paymentType === 'DEPOSIT' ? 'Deposit Kunci' : `Sewa (${data.month})`;
+        const receiptNo = `DK-${payment.id.slice(0, 8).toUpperCase()}`;
+        const transactionDate = new Date().toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+        const paymentDescription = data.paymentType === 'DEPOSIT'
+          ? 'Deposit Kunci (Awal)'
+          : `Biaya Sewa (${data.month})`;
         
-        const waMsg = `*Kwitansi DIRA KOS*\n\nTerima kasih ${tenant.name},\nPembayaran Anda untuk *${msgType}* sebesar *Rp ${formattedAmount}* telah kami terima.\n\nSemoga hari Anda menyenangkan!`;
+        const waMsg = 
+`🧾 *BUKTI PEMBAYARAN RESMI DIRA KOS*
+────────────────────────────
+*No. Resi   :* \`${receiptNo}\`
+*Tanggal    :* ${transactionDate}
+
+Halo Kak *${tenant.name}*,
+Terima kasih banyak atas pembayaran Anda. Transaksi telah berhasil kami terima dan tercatat di sistem dengan rincian berikut:
+
+🏠 *Kamar        :* Kamar ${tenant.room?.roomNumber || '-'}
+📌 *Keperluan    :* ${paymentDescription}
+💰 *Total Bayar  :* *Rp ${formattedAmount}*
+✅ *Status       :* *LUNAS*
+
+────────────────────────────
+Pesan ini merupakan bukti pembayaran elektronik yang sah dari manajemen *DIRA KOS*.
+
+Semoga hari Kakak menyenangkan, selalu nyaman, dan betah tinggal bersama kami. Jika ada kendala terkait fasilitas kamar, jangan ragu untuk menghubungi pengelola.
+
+Salam hangat & terima kasih,
+*Pengelola DIRA KOS* 🙏✨`;
         
         try {
           await sendWaMessage(tenant.waNumber, waMsg);
