@@ -13,6 +13,7 @@ export function middleware(request: NextRequest) {
   path.startsWith('/api/auth') ||
   path.startsWith('/api/daftar') ||
   path.startsWith('/api/cron') ||
+  path.startsWith('/api/wa') ||
   path.startsWith('/api/penghuni/');
   
   const token = request.cookies.get('admin_token')?.value || '';
