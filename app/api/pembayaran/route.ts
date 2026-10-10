@@ -62,16 +62,23 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. Kirim bukti kwitansi WA jika Bot Aktif
-    if (getWaStatus().isReady && data.status === 'LUNAS') {
-      if (tenant) {
+    // 3. Kirim bukti kwitansi WA jika Bot Aktif dan status LUNAS
+    if (data.status === 'LUNAS' && tenant) {
+      const waStatus = getWaStatus();
+      if (waStatus.isReady) {
         const formattedAmount = new Intl.NumberFormat('id-ID').format(payment.amount);
-        const msgType = data.paymentType === 'DEPOSIT' ? 'Deposit Kunci' : `Sewa Bulan ${data.month}`;
+        const msgType = data.paymentType === 'DEPOSIT' ? 'Deposit Kunci' : `Sewa (${data.month})`;
         
         const waMsg = `*Kwitansi DIRA KOS*\n\nTerima kasih ${tenant.name},\nPembayaran Anda untuk *${msgType}* sebesar *Rp ${formattedAmount}* telah kami terima.\n\nSemoga hari Anda menyenangkan!`;
         
-        // Sengaja kita tangkap errornya agar tidak mengganggu proses utama
-        sendWaMessage(tenant.waNumber, waMsg).catch(err => console.error("Gagal kirim kwitansi WA:", err));
+        try {
+          await sendWaMessage(tenant.waNumber, waMsg);
+          console.log(`[PEMBAYARAN] ✅ Kwitansi WA berhasil dikirim ke ${tenant.name} (${tenant.waNumber})`);
+        } catch (err: any) {
+          console.error(`[PEMBAYARAN] ❌ Gagal kirim kwitansi WA ke ${tenant.name}:`, err?.message || err);
+        }
+      } else {
+        console.warn(`[PEMBAYARAN] ⚠️ Bot WA sedang tidak aktif / belum scan QR. Kwitansi untuk ${tenant.name} tidak terkirim via WA.`);
       }
     }
 

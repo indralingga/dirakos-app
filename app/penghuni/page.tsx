@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import TenantActions from '@/app/components/TenantActions';
+import { isCyclePaid, getSafeDueDate } from '@/lib/paymentUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,57 +60,22 @@ export default async function PenghuniPage() {
                 const dueDay = checkIn.getDate();
                 
                 // Cari batas awal siklus sewa yang berlaku sekarang dengan aman (hindari overflow tgl 29/30/31)
-                let cycleStart = new Date(today.getFullYear(), today.getMonth(), 1);
-                cycleStart.setDate(dueDay);
+                let cycleStart = getSafeDueDate(today.getFullYear(), today.getMonth(), dueDay);
 
                 if (today.getDate() < dueDay) {
                   // Jika hari ini belum mencapai tanggal jatuh tempo bulan ini, 
                   // berarti dia masih di dalam siklus yang dimulai bulan lalu.
-                  cycleStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-                  cycleStart.setDate(dueDay);
+                  cycleStart = getSafeDueDate(today.getFullYear(), today.getMonth() - 1, dueDay);
                 }
 
                 // Cari batas awal siklus sewa BERIKUTNYA dengan aman
-                let nextCycleStart = new Date(cycleStart.getFullYear(), cycleStart.getMonth() + 1, 1);
-                nextCycleStart.setDate(dueDay);
+                let nextCycleStart = getSafeDueDate(cycleStart.getFullYear(), cycleStart.getMonth() + 1, dueDay);
 
-                // Format string bulan & tahun untuk siklus berjalan
-                const startMonthLong = cycleStart.toLocaleDateString('id-ID', { month: 'long' });
-                const startMonthShort = cycleStart.toLocaleDateString('id-ID', { month: 'short' });
-                const startMonthNum = (cycleStart.getMonth() + 1).toString();
-                const startYear = cycleStart.getFullYear().toString();
-
-                // Format string bulan & tahun untuk siklus berikutnya
-                const nextMonthLong = nextCycleStart.toLocaleDateString('id-ID', { month: 'long' });
-                const nextMonthShort = nextCycleStart.toLocaleDateString('id-ID', { month: 'short' });
-                const nextMonthNum = (nextCycleStart.getMonth() + 1).toString();
-                const nextYear = nextCycleStart.getFullYear().toString();
-                
                 // 1. Cek Kelunasan Siklus Berjalan
-                const isPaidCurrentCycle = t.payments.some(p => {
-                  if (p.status !== 'LUNAS') return false;
-                  const rawPeriod = p.month.toLowerCase();
-                  const hasMonth = rawPeriod.includes(startMonthLong.toLowerCase()) || rawPeriod.includes(startMonthShort.toLowerCase());
-                  const hasYear = rawPeriod.includes(startYear);
-                  if (hasMonth && hasYear) return true;
+                const isPaidCurrentCycle = isCyclePaid(t.payments, cycleStart);
 
-                  const numericPattern1 = `/${startMonthNum}/${startYear}`;
-                  const numericPattern2 = `/${startMonthNum.padStart(2, '0')}/${startYear}`;
-                  return rawPeriod.includes(numericPattern1) || rawPeriod.includes(numericPattern2);
-                });
-
-                // 2. Cek Kelunasan Siklus Berikutnya (opsional, jika dia sudah bayar duluan untuk bulan depan)
-                const isPaidNextCycle = t.payments.some(p => {
-                  if (p.status !== 'LUNAS') return false;
-                  const rawPeriod = p.month.toLowerCase();
-                  const hasMonth = rawPeriod.includes(nextMonthLong.toLowerCase()) || rawPeriod.includes(nextMonthShort.toLowerCase());
-                  const hasYear = rawPeriod.includes(nextYear);
-                  if (hasMonth && hasYear) return true;
-
-                  const numericPattern1 = `/${nextMonthNum}/${nextYear}`;
-                  const numericPattern2 = `/${nextMonthNum.padStart(2, '0')}/${nextYear}`;
-                  return rawPeriod.includes(numericPattern1) || rawPeriod.includes(numericPattern2);
-                });
+                // 2. Cek Kelunasan Siklus Berikutnya (jika dia sudah bayar duluan untuk bulan depan)
+                const isPaidNextCycle = isCyclePaid(t.payments, nextCycleStart);
 
                 // Hitung sisa hari menuju siklus berikutnya (untuk pengingat H-3 s/d Hari H)
                 const todayReset = new Date(today.getFullYear(), today.getMonth(), today.getDate());

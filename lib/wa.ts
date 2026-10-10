@@ -101,9 +101,7 @@ if (!globalForWa.isInitializing) {
   waClient.initialize().catch(err => console.error("WA Init error:", err));
 }
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForWa.waClient = waClient;
-}
+globalForWa.waClient = waClient;
 
 // FUNGSI STATUS BOT (Menyelesaikan Error Build)
 export const getWaStatus = () => {
@@ -115,25 +113,30 @@ export const getWaStatus = () => {
 
 // FUNGSI KIRIM PESAN WA
 export const sendWaMessage = async (to: string, message: string, mediaPath?: string) => {
-  if (!globalForWa.isReady) {
-    throw new Error("WhatsApp Client is not ready yet.");
+  const client = globalForWa.waClient || waClient;
+  if (!globalForWa.isReady || !client) {
+    throw new Error("WhatsApp Client belum siap / belum terhubung.");
   }
   
-  let chatId = to;
+  if (!to || typeof to !== 'string') {
+    throw new Error("Nomor tujuan WhatsApp tidak valid.");
+  }
+
+  let chatId = to.trim();
   // Jika input tujuan tidak mengandung '@', format sebagai nomor HP biasa (@c.us)
-  if (!to.includes('@')) {
-    let formattedNumber = to.replace(/\D/g, '');
+  if (!chatId.includes('@')) {
+    let formattedNumber = chatId.replace(/\D/g, '');
     if (formattedNumber.startsWith('0')) {
       formattedNumber = '62' + formattedNumber.substring(1);
     }
     chatId = `${formattedNumber}@c.us`;
   }
   
-  if (mediaPath) {
+  if (mediaPath && fs.existsSync(mediaPath)) {
     const media = MessageMedia.fromFilePath(mediaPath);
-    await waClient.sendMessage(chatId, media, { caption: message });
+    await client.sendMessage(chatId, media, { caption: message });
   } else {
-    await waClient.sendMessage(chatId, message);
+    await client.sendMessage(chatId, message);
   }
 };
 
@@ -141,7 +144,8 @@ export const sendWaMessage = async (to: string, message: string, mediaPath?: str
 // Fungsi untuk mengeluarkan nomor dari Group WA Kos-kosan secara otomatis
 export const removeTenantFromGroup = async (waNumber: string) => {
   try {
-    if (!globalForWa.isReady) {
+    const client = globalForWa.waClient || waClient;
+    if (!globalForWa.isReady || !client) {
       console.log("⚠️ WA Client tidak aktif, melewati proses mengeluarkan dari grup.");
       return;
     }
@@ -157,7 +161,7 @@ export const removeTenantFromGroup = async (waNumber: string) => {
     }
     const participantId = `${formattedNumber}@c.us`;
 
-    const chat = await waClient.getChatById(groupId);
+    const chat = await client.getChatById(groupId);
     if (chat.isGroup) {
       const groupChat = chat as any;
       await groupChat.removeParticipants([participantId]);
