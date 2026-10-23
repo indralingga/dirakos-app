@@ -32,7 +32,7 @@ export default function WAPage() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 3000);
+    const interval = setInterval(fetchStatus, 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -49,14 +49,15 @@ export default function WAPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    setStatus(prev => ({ ...prev, qrCodeData: '' }));
     try {
       await fetch('/api/wa/refresh', { method: 'POST' });
-      await fetchStatus();
-      setTimeLeft(25);
     } catch (err) {
       console.error('Gagal refresh:', err);
     } finally {
-      setRefreshing(false);
+      setTimeout(() => {
+        setRefreshing(false);
+      }, 2500);
     }
   };
 

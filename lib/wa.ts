@@ -42,13 +42,7 @@ const puppeteerArgs = [
     '--no-sandbox',
     '--disable-setuid-sandbox',
     '--disable-dev-shm-usage',
-    '--disable-gpu',
-    '--disable-accelerated-2d-canvas',
-    '--no-first-run',
-    '--no-zygote',
-    '--disable-features=IsolateOrigins,site-per-process',
-    '--disable-site-isolation-trials',
-    '--js-flags=--max-old-space-size=512'
+    '--disable-gpu'
 ];
 
 export const waClient = globalForWa.waClient || new Client({
@@ -108,18 +102,35 @@ globalForWa.waClient = waClient;
 export const refreshQrCode = async () => {
   const client = globalForWa.waClient || waClient;
   if (!client || globalForWa.isReady) return false;
+
+  globalForWa.qrCodeData = "";
+  globalForWa.qrGeneratedAt = 0;
+
   try {
     const pupPage = (client as any).pupPage;
     if (pupPage && !pupPage.isClosed()) {
-      console.log('🔄 Memuat ulang halaman WhatsApp Web untuk QR Code baru...');
-      globalForWa.qrCodeData = "";
-      globalForWa.qrGeneratedAt = 0;
-      await pupPage.reload({ waitUntil: 'networkidle2', timeout: 30000 });
+      console.log('🔄 Memuat ulang halaman WhatsApp Web untuk QR Code baru via window.location.reload...');
+      await pupPage.evaluate(() => {
+        window.location.reload();
+      });
       return true;
     }
   } catch (err: any) {
-    console.error('Gagal reload QR:', err?.message || err);
+    console.warn('⚠️ Gagal reload cepat QR, melakukan restart bersih client...', err?.message || err);
   }
+
+  // Jika halaman bermasalah / detached frame, restart client secara bersih
+  try {
+    console.log('🔄 Merestart instance WhatsApp Client...');
+    globalForWa.isInitializing = false;
+    globalForWa.isReady = false;
+    await client.destroy().catch(() => {});
+    waClient.initialize().catch(e => console.error('Re-init error:', e));
+    return true;
+  } catch (resetErr) {
+    console.error('❌ Gagal merestart client:', resetErr);
+  }
+
   return false;
 };
 
