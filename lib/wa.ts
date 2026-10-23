@@ -1,5 +1,6 @@
 import { Client, LocalAuth, MessageMedia } from 'whatsapp-web.js';
 import fs from 'fs';
+import path from 'path';
 import { startCronJobs } from './cron';
 
 // Inisialisasi Puppeteer Stealth Plugin untuk mem-bypass blokir Headless/Bot WhatsApp
@@ -61,11 +62,15 @@ const puppeteerArgs = [
     '--no-sandbox',
     '--disable-setuid-sandbox',
     '--disable-dev-shm-usage',
-    '--disable-gpu'
+    '--disable-gpu',
+    '--disable-features=IsolateOrigins,site-per-process',
+    '--disable-site-isolation-trials',
+    '--disable-extensions',
+    '--disable-software-rasterizer'
 ];
 
 export const waClient = globalForWa.waClient || new Client({
-    authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
+    authStrategy: new LocalAuth({ dataPath: path.join(process.cwd(), '.wwebjs_auth') }),
     puppeteer: {
         ...(browserPath ? { executablePath: browserPath } : {}),
         args: puppeteerArgs
