@@ -69,37 +69,14 @@ if (!globalForWa.isInitializing) {
   });
 
   waClient.on('ready', async () => {
-      globalForWa.isReady = true;
+      console.log('✅ WA Client connected, stabilizing frame (3s)...');
       globalForWa.qrCodeData = "";
-      console.log('✅ WA Client is ready!');
       
-      // KODE UNTUK MENGECEK NAMA GRUP & ID-nya:
-      try {
-          const chats = await waClient.getChats();
-
-          // Log Grup
-          const groups = chats.filter(chat => chat.isGroup);
-          console.log("\n========= BERIKUT DAFTAR GRUP WA ANDA =========");
-          if (groups.length === 0) console.log("(Tidak ada grup)");
-          groups.forEach(g => {
-              console.log(`NAMA: "${g.name}" | ID: ${g.id._serialized}`);
-          });
-          console.log("================================================\n");
-
-          // Log Saluran / Newsletter
-          const channels = chats.filter(chat => chat.id._serialized.endsWith('@newsletter'));
-          console.log("========= BERIKUT DAFTAR SALURAN WA ANDA =========");
-          if (channels.length === 0) console.log("(Tidak ada saluran)");
-          channels.forEach(c => {
-              console.log(`NAMA: "${c.name}" | ID: ${c.id._serialized}`);
-          });
-          console.log("===================================================\n");
-
-      } catch (err) {
-          console.error("Gagal membaca daftar grup/saluran:", err);
-      }
-
-      startCronJobs();
+      setTimeout(() => {
+          globalForWa.isReady = true;
+          console.log('✅ WA Client is ready to send messages!');
+          startCronJobs();
+      }, 3000);
   });
 
   waClient.on('authenticated', () => {
@@ -169,29 +146,22 @@ export const sendWaMessage = async (to: string, message: string, mediaPath?: str
       errMsg.includes('Execution context was destroyed') ||
       errMsg.includes('Target closed')
     ) {
-      console.warn('🚨 Puppeteer browser/frame terlepas atau crash. Mereset status WA Client & mencoba reload...');
+      console.warn('🚨 Puppeteer browser/frame terlepas atau crash. Mereset client WhatsApp...');
       globalForWa.isReady = false;
 
       try {
-        const pupPage = (client as any).pupPage;
-        if (pupPage && !pupPage.isClosed()) {
-          console.log('🔄 Memuat ulang halaman WhatsApp Web...');
-          await pupPage.reload({ waitUntil: 'networkidle0', timeout: 30000 });
-          globalForWa.isReady = true;
-          console.log('✅ Halaman WhatsApp Web berhasil dimuat ulang!');
-
-          // Coba kirim ulang pesan sekali lagi
-          if (mediaPath && fs.existsSync(mediaPath)) {
-            const media = MessageMedia.fromFilePath(mediaPath);
-            await client.sendMessage(chatId, media, { caption: message });
-          } else {
-            await client.sendMessage(chatId, message);
-          }
-          return;
-        }
-      } catch (recoveryErr: any) {
-        console.error('❌ Gagal recovery otomatis halaman Puppeteer:', recoveryErr?.message || recoveryErr);
+        await client.destroy();
+      } catch (destroyErr: any) {
+        console.error('Error destroying broken client:', destroyErr?.message || destroyErr);
       }
+
+      setTimeout(() => {
+        console.log('🔄 Menginisialisasi ulang WA Client...');
+        globalForWa.isInitializing = false;
+        waClient.initialize().catch(reInitErr => {
+          console.error('❌ Gagal inisialisasi ulang WA Client:', reInitErr);
+        });
+      }, 3000);
     }
 
     throw err;
