@@ -5,6 +5,7 @@ import { startCronJobs } from './cron';
 const globalForWa = global as unknown as {
   waClient: Client,
   qrCodeData: string,
+  qrGeneratedAt: number,
   isReady: boolean,
   isInitializing: boolean
 };
@@ -67,8 +68,9 @@ if (!isBuildPhase && !globalForWa.isInitializing) {
   globalForWa.isReady = false;
 
   waClient.on('qr', (qr) => {
-      console.log("QR Code received");
+      console.log("QR Code received at", new Date().toISOString());
       globalForWa.qrCodeData = qr;
+      globalForWa.qrGeneratedAt = Date.now();
   });
 
   waClient.on('ready', async () => {
@@ -102,11 +104,31 @@ if (!isBuildPhase && !globalForWa.isInitializing) {
 
 globalForWa.waClient = waClient;
 
+// FUNGSI SEGARKAN QR CODE DARI BROWSER
+export const refreshQrCode = async () => {
+  const client = globalForWa.waClient || waClient;
+  if (!client || globalForWa.isReady) return false;
+  try {
+    const pupPage = (client as any).pupPage;
+    if (pupPage && !pupPage.isClosed()) {
+      console.log('🔄 Memuat ulang halaman WhatsApp Web untuk QR Code baru...');
+      globalForWa.qrCodeData = "";
+      globalForWa.qrGeneratedAt = 0;
+      await pupPage.reload({ waitUntil: 'networkidle2', timeout: 30000 });
+      return true;
+    }
+  } catch (err: any) {
+    console.error('Gagal reload QR:', err?.message || err);
+  }
+  return false;
+};
+
 // FUNGSI STATUS BOT (Menyelesaikan Error Build)
 export const getWaStatus = () => {
   return { 
     isReady: globalForWa.isReady, 
-    qrCodeData: globalForWa.qrCodeData 
+    qrCodeData: globalForWa.qrCodeData,
+    qrGeneratedAt: globalForWa.qrGeneratedAt || 0
   };
 };
 
