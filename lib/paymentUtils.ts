@@ -95,3 +95,52 @@ export function isCyclePaid(
     return false;
   });
 }
+
+/**
+ * Membuat template autoteks bukti pembayaran resmi yang rapi dan elegan untuk dikirim ke WhatsApp
+ */
+export function generateReceiptMessage(
+  payment: {
+    id: string;
+    amount: number;
+    paymentType: string;
+    month: string;
+  },
+  tenant: {
+    name: string;
+    room?: { roomNumber: string } | null;
+  }
+): string {
+  const formattedAmount = new Intl.NumberFormat('id-ID').format(payment.amount);
+  const receiptNo = `DK-${payment.id.slice(0, 8).toUpperCase()}`;
+  const transactionDate = new Date().toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+  const paymentDescription = payment.paymentType === 'DEPOSIT'
+    ? 'Deposit Kunci (Awal)'
+    : `Biaya Sewa (${payment.month})`;
+
+  return `🧾 *BUKTI PEMBAYARAN RESMI DIRA KOS*
+────────────────────────────
+*No. Resi   :* \`${receiptNo}\`
+*Tanggal    :* ${transactionDate}
+
+Halo Kak *${tenant.name}*,
+Terima kasih banyak atas pembayaran Anda. Transaksi telah berhasil kami terima dan tercatat di sistem dengan rincian berikut:
+
+🏠 *Kamar        :* Kamar ${tenant.room?.roomNumber || '-'}
+📌 *Keperluan    :* ${paymentDescription}
+💰 *Total Bayar  :* *Rp ${formattedAmount}*
+✅ *Status       :* *LUNAS*
+
+────────────────────────────
+Pesan ini merupakan bukti pembayaran elektronik yang sah dari manajemen *DIRA KOS*.
+
+Semoga hari Kakak menyenangkan, selalu nyaman, dan betah tinggal bersama kami. Jika ada kendala terkait fasilitas kamar, jangan ragu untuk menghubungi pengelola.
+
+Salam hangat & terima kasih,
+*Pengelola DIRA KOS* 🙏✨`;
+}
+

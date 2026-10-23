@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
+import ResendReceiptButton from '@/app/components/ResendReceiptButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +40,7 @@ export default async function PembayaranPage() {
               <th>Periode Sewa</th>
               <th>Nominal</th>
               <th>Status</th>
+              <th>Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -55,11 +57,14 @@ export default async function PembayaranPage() {
                     {p.status}
                   </span>
                 </td>
+                <td>
+                  <ResendReceiptButton paymentId={p.id} tenantName={p.tenant.name} />
+                </td>
               </tr>
             ))}
             {payments.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: '#6B7280' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#6B7280' }}>
                   Belum ada data pembayaran yang tercatat.
                 </td>
               </tr>

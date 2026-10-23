@@ -37,11 +37,24 @@ if (process.platform === 'win32') {
     }
 }
 
+const puppeteerArgs = [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--disable-accelerated-2d-canvas',
+    '--no-first-run',
+    '--no-zygote',
+    '--disable-features=IsolateOrigins,site-per-process',
+    '--disable-site-isolation-trials',
+    '--js-flags=--max-old-space-size=512'
+];
+
 export const waClient = globalForWa.waClient || new Client({
     authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
     puppeteer: {
         ...(browserPath ? { executablePath: browserPath } : {}),
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: puppeteerArgs
     }
 });
 
@@ -98,6 +111,12 @@ if (!globalForWa.isInitializing) {
       globalForWa.isReady = false;
   });
 
+  waClient.on('disconnected', reason => {
+      console.warn('⚠️ WA Client disconnected:', reason);
+      globalForWa.isReady = false;
+      globalForWa.qrCodeData = "";
+  });
+
   waClient.initialize().catch(err => console.error("WA Init error:", err));
 }
 
@@ -132,11 +151,50 @@ export const sendWaMessage = async (to: string, message: string, mediaPath?: str
     chatId = `${formattedNumber}@c.us`;
   }
   
-  if (mediaPath && fs.existsSync(mediaPath)) {
-    const media = MessageMedia.fromFilePath(mediaPath);
-    await client.sendMessage(chatId, media, { caption: message });
-  } else {
-    await client.sendMessage(chatId, message);
+  try {
+    if (mediaPath && fs.existsSync(mediaPath)) {
+      const media = MessageMedia.fromFilePath(mediaPath);
+      await client.sendMessage(chatId, media, { caption: message });
+    } else {
+      await client.sendMessage(chatId, message);
+    }
+  } catch (err: any) {
+    const errMsg = err?.message || String(err);
+    console.error(`[WA ERROR] Gagal mengirim pesan ke ${chatId}:`, errMsg);
+
+    // Deteksi jika Puppeteer browser/frame terputus / detached
+    if (
+      errMsg.includes('detached Frame') ||
+      errMsg.includes('Session closed') ||
+      errMsg.includes('Execution context was destroyed') ||
+      errMsg.includes('Target closed')
+    ) {
+      console.warn('🚨 Puppeteer browser/frame terlepas atau crash. Mereset status WA Client & mencoba reload...');
+      globalForWa.isReady = false;
+
+      try {
+        const pupPage = (client as any).pupPage;
+        if (pupPage && !pupPage.isClosed()) {
+          console.log('🔄 Memuat ulang halaman WhatsApp Web...');
+          await pupPage.reload({ waitUntil: 'networkidle0', timeout: 30000 });
+          globalForWa.isReady = true;
+          console.log('✅ Halaman WhatsApp Web berhasil dimuat ulang!');
+
+          // Coba kirim ulang pesan sekali lagi
+          if (mediaPath && fs.existsSync(mediaPath)) {
+            const media = MessageMedia.fromFilePath(mediaPath);
+            await client.sendMessage(chatId, media, { caption: message });
+          } else {
+            await client.sendMessage(chatId, message);
+          }
+          return;
+        }
+      } catch (recoveryErr: any) {
+        console.error('❌ Gagal recovery otomatis halaman Puppeteer:', recoveryErr?.message || recoveryErr);
+      }
+    }
+
+    throw err;
   }
 };
 
