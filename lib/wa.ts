@@ -2,6 +2,25 @@ import { Client, LocalAuth, MessageMedia } from 'whatsapp-web.js';
 import fs from 'fs';
 import { startCronJobs } from './cron';
 
+// Inisialisasi Puppeteer Stealth Plugin untuk mem-bypass blokir Headless/Bot WhatsApp
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const puppeteerExtra = require('puppeteer-extra');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+  puppeteerExtra.use(StealthPlugin());
+
+  const pPath = require.resolve('puppeteer');
+  require.cache[pPath] = {
+    id: pPath,
+    filename: pPath,
+    loaded: true,
+    exports: puppeteerExtra
+  } as any;
+} catch (e) {
+  console.warn('Stealth plugin init warning:', e);
+}
+
 const globalForWa = global as unknown as {
   waClient: Client,
   qrCodeData: string,
@@ -50,7 +69,8 @@ export const waClient = globalForWa.waClient || new Client({
     puppeteer: {
         ...(browserPath ? { executablePath: browserPath } : {}),
         args: puppeteerArgs
-    }
+    },
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
 });
 
 // Hindari inisialisasi Puppeteer / WA Client saat proses next build
