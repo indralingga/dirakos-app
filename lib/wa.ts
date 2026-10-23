@@ -58,7 +58,10 @@ export const waClient = globalForWa.waClient || new Client({
     }
 });
 
-if (!globalForWa.isInitializing) {
+// Hindari inisialisasi Puppeteer / WA Client saat proses next build
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+
+if (!isBuildPhase && !globalForWa.isInitializing) {
   globalForWa.isInitializing = true;
   globalForWa.qrCodeData = "";
   globalForWa.isReady = false;
