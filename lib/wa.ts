@@ -3,129 +3,135 @@ import fs from 'fs';
 import path from 'path';
 import { startCronJobs } from './cron';
 
-// Inisialisasi Puppeteer Stealth Plugin untuk mem-bypass blokir Headless/Bot WhatsApp
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const puppeteerExtra = require('puppeteer-extra');
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-  puppeteerExtra.use(StealthPlugin());
-
-  const pPath = require.resolve('puppeteer');
-  require.cache[pPath] = {
-    id: pPath,
-    filename: pPath,
-    loaded: true,
-    exports: puppeteerExtra
-  } as any;
-} catch (e) {
-  console.warn('Stealth plugin init warning:', e);
-}
-
 const globalForWa = global as unknown as {
-  waClient: Client,
-  qrCodeData: string,
-  qrGeneratedAt: number,
-  isReady: boolean,
-  isInitializing: boolean
+  waClient: Client | null;
+  qrCodeData: string;
+  qrGeneratedAt: number;
+  isReady: boolean;
+  isInitializing: boolean;
 };
+
+// Inisialisasi state global
+if (!globalForWa.waClient) {
+  globalForWa.waClient = null;
+  globalForWa.qrCodeData = "";
+  globalForWa.qrGeneratedAt = 0;
+  globalForWa.isReady = false;
+  globalForWa.isInitializing = false;
+}
 
 // Deteksi OS otomatis untuk menemukan Chrome di Windows maupun Linux VPS
 let browserPath = '';
 if (process.platform === 'win32') {
-    const paths = [
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
-    ];
-    for (const p of paths) {
-        if (fs.existsSync(p)) {
-            browserPath = p;
-            break;
-        }
+  const paths = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
+  ];
+  for (const p of paths) {
+    if (fs.existsSync(p)) {
+      browserPath = p;
+      break;
     }
+  }
 } else {
-    const linuxPaths = [
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium-browser',
-        '/usr/bin/chromium'
-    ];
-    for (const p of linuxPaths) {
-        if (fs.existsSync(p)) {
-            browserPath = p;
-            break;
-        }
+  const linuxPaths = [
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium'
+  ];
+  for (const p of linuxPaths) {
+    if (fs.existsSync(p)) {
+      browserPath = p;
+      break;
     }
+  }
 }
 
 const puppeteerArgs = [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--disable-gpu',
-    '--disable-features=IsolateOrigins,site-per-process',
-    '--disable-site-isolation-trials',
-    '--disable-extensions',
-    '--disable-software-rasterizer'
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-gpu',
+  '--disable-features=IsolateOrigins,site-per-process',
+  '--disable-site-isolation-trials',
+  '--disable-extensions',
+  '--disable-software-rasterizer'
 ];
 
-export const waClient = globalForWa.waClient || new Client({
+function createClientInstance(): Client {
+  const client = new Client({
     authStrategy: new LocalAuth({ dataPath: path.join(process.cwd(), '.wwebjs_auth') }),
     puppeteer: {
-        ...(browserPath ? { executablePath: browserPath } : {}),
-        args: puppeteerArgs
+      ...(browserPath ? { executablePath: browserPath } : {}),
+      args: puppeteerArgs
     },
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
-});
-
-// Hindari inisialisasi Puppeteer / WA Client saat proses next build
-const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
-
-if (!isBuildPhase && !globalForWa.isInitializing) {
-  globalForWa.isInitializing = true;
-  globalForWa.qrCodeData = "";
-  globalForWa.isReady = false;
-
-  waClient.on('qr', (qr) => {
-      console.log("QR Code received at", new Date().toISOString());
-      globalForWa.qrCodeData = qr;
-      globalForWa.qrGeneratedAt = Date.now();
   });
 
-  waClient.on('ready', async () => {
-      console.log('✅ WA Client connected, stabilizing frame (3s)...');
-      globalForWa.qrCodeData = "";
-      
-      setTimeout(() => {
-          globalForWa.isReady = true;
-          console.log('✅ WA Client is ready to send messages!');
-          startCronJobs();
-      }, 3000);
+  client.on('qr', (qr) => {
+    console.log("QR Code received at", new Date().toISOString());
+    globalForWa.qrCodeData = qr;
+    globalForWa.qrGeneratedAt = Date.now();
   });
 
-  waClient.on('authenticated', () => {
-      console.log('✅ WA Authenticated');
+  client.on('ready', async () => {
+    console.log('✅ WA Client connected, stabilizing frame (3s)...');
+    globalForWa.qrCodeData = "";
+    
+    setTimeout(() => {
+      globalForWa.isReady = true;
+      console.log('✅ WA Client is ready to send messages!');
+      startCronJobs();
+    }, 3000);
   });
 
-  waClient.on('auth_failure', msg => {
-      console.error('❌ WA Authentication failure', msg);
-      globalForWa.isReady = false;
+  client.on('authenticated', () => {
+    console.log('✅ WA Authenticated');
   });
 
-  waClient.on('disconnected', reason => {
-      console.warn('⚠️ WA Client disconnected:', reason);
-      globalForWa.isReady = false;
-      globalForWa.qrCodeData = "";
+  client.on('auth_failure', (msg) => {
+    console.error('❌ WA Authentication failure', msg);
+    globalForWa.isReady = false;
   });
 
-  waClient.initialize().catch(err => console.error("WA Init error:", err));
+  client.on('disconnected', (reason) => {
+    console.warn('⚠️ WA Client disconnected:', reason);
+    globalForWa.isReady = false;
+    globalForWa.qrCodeData = "";
+  });
+
+  return client;
 }
 
-globalForWa.waClient = waClient;
+export function initWaClient() {
+  const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+  if (isBuildPhase) return;
+  if (globalForWa.isInitializing) return;
+
+  globalForWa.isInitializing = true;
+  globalForWa.isReady = false;
+  globalForWa.qrCodeData = "";
+
+  const client = createClientInstance();
+  globalForWa.waClient = client;
+
+  client.initialize().catch((err) => {
+    console.error("WA Init error:", err);
+    globalForWa.isInitializing = false;
+  });
+}
+
+// Inisialisasi otomatis jika belum aktif
+if (!globalForWa.waClient && !globalForWa.isInitializing) {
+  initWaClient();
+}
+
+export const waClient = globalForWa.waClient;
 
 // FUNGSI SEGARKAN QR CODE DARI BROWSER
 export const refreshQrCode = async () => {
-  const client = globalForWa.waClient || waClient;
+  const client = globalForWa.waClient;
   if (!client || globalForWa.isReady) return false;
 
   globalForWa.qrCodeData = "";
@@ -144,13 +150,13 @@ export const refreshQrCode = async () => {
     console.warn('⚠️ Gagal reload cepat QR, melakukan restart bersih client...', err?.message || err);
   }
 
-  // Jika halaman bermasalah / detached frame, restart client secara bersih
+  // Jika halaman bermasalah / detached frame, restart client secara bersih dengan instance baru
   try {
-    console.log('🔄 Merestart instance WhatsApp Client...');
+    console.log('🔄 Merestart instance WhatsApp Client baru...');
     globalForWa.isInitializing = false;
     globalForWa.isReady = false;
     await client.destroy().catch(() => {});
-    waClient.initialize().catch(e => console.error('Re-init error:', e));
+    initWaClient();
     return true;
   } catch (resetErr) {
     console.error('❌ Gagal merestart client:', resetErr);
@@ -159,7 +165,7 @@ export const refreshQrCode = async () => {
   return false;
 };
 
-// FUNGSI STATUS BOT (Menyelesaikan Error Build)
+// FUNGSI STATUS BOT
 export const getWaStatus = () => {
   return { 
     isReady: globalForWa.isReady, 
@@ -170,7 +176,7 @@ export const getWaStatus = () => {
 
 // FUNGSI KIRIM PESAN WA
 export const sendWaMessage = async (to: string, message: string, mediaPath?: string) => {
-  const client = globalForWa.waClient || waClient;
+  const client = globalForWa.waClient;
   if (!globalForWa.isReady || !client) {
     throw new Error("WhatsApp Client belum siap / belum terhubung.");
   }
@@ -192,9 +198,9 @@ export const sendWaMessage = async (to: string, message: string, mediaPath?: str
   try {
     if (mediaPath && fs.existsSync(mediaPath)) {
       const media = MessageMedia.fromFilePath(mediaPath);
-      await client.sendMessage(chatId, media, { caption: message });
+      return await client.sendMessage(chatId, media, { caption: message });
     } else {
-      await client.sendMessage(chatId, message);
+      return await client.sendMessage(chatId, message);
     }
   } catch (err: any) {
     const errMsg = err?.message || String(err);
@@ -209,6 +215,7 @@ export const sendWaMessage = async (to: string, message: string, mediaPath?: str
     ) {
       console.warn('🚨 Puppeteer browser/frame terlepas atau crash. Mereset client WhatsApp...');
       globalForWa.isReady = false;
+      globalForWa.isInitializing = false;
 
       try {
         await client.destroy();
@@ -217,11 +224,8 @@ export const sendWaMessage = async (to: string, message: string, mediaPath?: str
       }
 
       setTimeout(() => {
-        console.log('🔄 Menginisialisasi ulang WA Client...');
-        globalForWa.isInitializing = false;
-        waClient.initialize().catch(reInitErr => {
-          console.error('❌ Gagal inisialisasi ulang WA Client:', reInitErr);
-        });
+        console.log('🔄 Menginisialisasi ulang WA Client dengan instance baru...');
+        initWaClient();
       }, 3000);
     }
 
@@ -229,11 +233,10 @@ export const sendWaMessage = async (to: string, message: string, mediaPath?: str
   }
 };
 
-
 // Fungsi untuk mengeluarkan nomor dari Group WA Kos-kosan secara otomatis
 export const removeTenantFromGroup = async (waNumber: string) => {
   try {
-    const client = globalForWa.waClient || waClient;
+    const client = globalForWa.waClient;
     if (!globalForWa.isReady || !client) {
       console.log("⚠️ WA Client tidak aktif, melewati proses mengeluarkan dari grup.");
       return;
