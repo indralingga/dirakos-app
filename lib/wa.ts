@@ -56,10 +56,14 @@ const puppeteerArgs = [
   '--disable-setuid-sandbox',
   '--disable-dev-shm-usage',
   '--disable-gpu',
-  '--disable-features=IsolateOrigins,site-per-process',
+  '--disable-features=IsolateOrigins,site-per-process,AudioServiceOutOfProcess',
   '--disable-site-isolation-trials',
   '--disable-extensions',
-  '--disable-software-rasterizer'
+  '--disable-software-rasterizer',
+  '--disable-default-apps',
+  '--disable-breakpad',
+  '--disable-component-update',
+  '--no-zygote'
 ];
 
 // Membersihkan lock file stale Chromium agar restart PM2 tidak pernah macet
@@ -238,8 +242,13 @@ export const sendWaMessage = async (to: string, message: string, mediaPath?: str
   
   try {
     if (mediaPath && fs.existsSync(mediaPath)) {
-      const media = MessageMedia.fromFilePath(mediaPath);
-      return await client.sendMessage(chatId, media, { caption: message });
+      try {
+        const media = MessageMedia.fromFilePath(mediaPath);
+        return await client.sendMessage(chatId, media, { caption: message });
+      } catch (mediaErr: any) {
+        console.warn(`[WA WARNING] Gagal mengirim media ke ${chatId}, fallback kirim teks:`, mediaErr?.message || mediaErr);
+        return await client.sendMessage(chatId, message);
+      }
     } else {
       return await client.sendMessage(chatId, message);
     }
