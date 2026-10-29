@@ -4,9 +4,10 @@ import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 
 export default function WAPage() {
-  const [status, setStatus] = useState<{ isReady: boolean; qrCodeData: string; qrGeneratedAt?: number }>({
+  const [status, setStatus] = useState<{ isReady: boolean; qrCodeData: string; qrGeneratedAt?: number; statusMessage?: string }>({
     isReady: false,
-    qrCodeData: ''
+    qrCodeData: '',
+    statusMessage: 'Menghubungkan...'
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -112,8 +113,8 @@ export default function WAPage() {
         ) : (
           <div>
             <div style={{
-              backgroundColor: isExpired ? '#fed7d7' : '#feebc8',
-              color: isExpired ? '#9b2c2c' : '#7b341e',
+              backgroundColor: isExpired ? '#fed7d7' : (status.qrCodeData ? '#feebc8' : '#e2e8f0'),
+              color: isExpired ? '#9b2c2c' : (status.qrCodeData ? '#7b341e' : '#2d3748'),
               padding: '0.85rem',
               borderRadius: '10px',
               fontSize: '0.875rem',
@@ -122,8 +123,10 @@ export default function WAPage() {
             }}>
               {isExpired ? (
                 <span>⚠️ <b>Kode QR telah kedaluwarsa.</b> Silakan klik tombol di bawah untuk membuat QR Code baru sebelum memindai.</span>
-              ) : (
+              ) : status.qrCodeData ? (
                 <span>Buka WhatsApp di HP &gt; <b>Perangkat Tertaut</b> &gt; <b>Tautkan Perangkat</b>, lalu segera scan QR Code di bawah.</span>
+              ) : (
+                <span>🔄 <b>{status.statusMessage || 'Sedang menghubungkan ke WhatsApp...'}</b> Mohon tunggu sesaat.</span>
               )}
             </div>
 
@@ -155,14 +158,15 @@ export default function WAPage() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                border: '4px dashed #cbd5e0'
+                border: '4px dashed #cbd5e0',
+                padding: '1rem'
               }}>
                 <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>⏳</div>
-                <div style={{ color: '#4a5568', fontWeight: 'bold', fontSize: '0.875rem' }}>
-                  {refreshing ? 'Membuat QR Code baru...' : 'Menyiapkan QR Code...'}
+                <div style={{ color: '#4a5568', fontWeight: 'bold', fontSize: '0.875rem', textAlign: 'center' }}>
+                  {refreshing ? 'Membuat QR Code baru...' : (status.statusMessage || 'Menyiapkan QR Code...')}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#718096', marginTop: '4px' }}>
-                  Mohon tunggu beberapa detik
+                <div style={{ fontSize: '0.75rem', color: '#718096', marginTop: '6px', textAlign: 'center' }}>
+                  {status.statusMessage?.includes('Memuat') ? 'Sedang menyinkronkan chat WhatsApp...' : 'Mohon tunggu beberapa detik'}
                 </div>
               </div>
             )}

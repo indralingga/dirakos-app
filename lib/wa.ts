@@ -9,6 +9,7 @@ const globalForWa = global as unknown as {
   qrGeneratedAt: number;
   isReady: boolean;
   isInitializing: boolean;
+  statusMessage: string;
 };
 
 // Inisialisasi state global
@@ -18,9 +19,10 @@ if (!globalForWa.waClient) {
   globalForWa.qrGeneratedAt = 0;
   globalForWa.isReady = false;
   globalForWa.isInitializing = false;
+  globalForWa.statusMessage = "Menginisialisasi...";
 }
 
-// Deteksi OS otomatis untuk menemukan Chrome di Windows maupun Linux VPS
+// Deteksi OS otomatis untuk menemukan Chrome/Chromium native
 let browserPath = '';
 if (process.platform === 'win32') {
   const paths = [
@@ -35,10 +37,11 @@ if (process.platform === 'win32') {
     }
   }
 } else {
+  // Prioritaskan /usr/bin/chromium (native deb package) untuk stabilitas tanpa snap
   const linuxPaths = [
+    '/usr/bin/chromium',
     '/usr/bin/google-chrome',
-    '/usr/bin/chromium-browser',
-    '/usr/bin/chromium'
+    '/usr/bin/chromium-browser'
   ];
   for (const p of linuxPaths) {
     if (fs.existsSync(p)) {
@@ -59,7 +62,26 @@ const puppeteerArgs = [
   '--disable-software-rasterizer'
 ];
 
+// Membersihkan lock file stale Chromium agar restart PM2 tidak pernah macet
+function cleanStaleSessionLocks(sessionDir: string) {
+  try {
+    const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket', 'lockfile'];
+    for (const file of lockFiles) {
+      const p = path.join(sessionDir, file);
+      try {
+        if (fs.existsSync(p) || fs.lstatSync(p).isSymbolicLink()) {
+          fs.unlinkSync(p);
+          console.log(`🧹 [WA] Cleaned stale lock file: ${file}`);
+        }
+      } catch (e) {}
+    }
+  } catch (err) {}
+}
+
 function createClientInstance(): Client {
+  const sessionDir = path.join(process.cwd(), '.wwebjs_auth', 'session');
+  cleanStaleSessionLocks(sessionDir);
+
   const client = new Client({
     authStrategy: new LocalAuth({ dataPath: path.join(process.cwd(), '.wwebjs_auth') }),
     puppeteer: {
@@ -69,18 +91,26 @@ function createClientInstance(): Client {
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
   });
 
+  client.on('loading_screen', (percent, message) => {
+    console.log(`⏳ [WA] Loading screen: ${percent}% - ${message}`);
+    globalForWa.statusMessage = `Memuat data chat (${percent}%)...`;
+  });
+
   client.on('qr', (qr) => {
     console.log("QR Code received at", new Date().toISOString());
     globalForWa.qrCodeData = qr;
     globalForWa.qrGeneratedAt = Date.now();
+    globalForWa.statusMessage = "Menunggu scan QR Code";
   });
 
   client.on('ready', async () => {
     console.log('✅ WA Client connected, stabilizing frame (3s)...');
     globalForWa.qrCodeData = "";
+    globalForWa.statusMessage = "Stabilizing frame...";
     
     setTimeout(() => {
       globalForWa.isReady = true;
+      globalForWa.statusMessage = "Terhubung";
       console.log('✅ WA Client is ready to send messages!');
       startCronJobs();
     }, 3000);
@@ -88,17 +118,20 @@ function createClientInstance(): Client {
 
   client.on('authenticated', () => {
     console.log('✅ WA Authenticated');
+    globalForWa.statusMessage = "Sesi terautentikasi, memuat chat...";
   });
 
   client.on('auth_failure', (msg) => {
     console.error('❌ WA Authentication failure', msg);
     globalForWa.isReady = false;
+    globalForWa.statusMessage = "Autentikasi gagal. Silakan tautkan ulang.";
   });
 
   client.on('disconnected', (reason) => {
     console.warn('⚠️ WA Client disconnected:', reason);
     globalForWa.isReady = false;
     globalForWa.qrCodeData = "";
+    globalForWa.statusMessage = "Terputus: " + reason;
   });
 
   return client;
@@ -112,6 +145,7 @@ export function initWaClient() {
   globalForWa.isInitializing = true;
   globalForWa.isReady = false;
   globalForWa.qrCodeData = "";
+  globalForWa.statusMessage = "Menghubungkan browser WhatsApp...";
 
   const client = createClientInstance();
   globalForWa.waClient = client;
@@ -119,6 +153,7 @@ export function initWaClient() {
   client.initialize().catch((err) => {
     console.error("WA Init error:", err);
     globalForWa.isInitializing = false;
+    globalForWa.statusMessage = "Gagal memulai browser: " + (err?.message || err);
   });
 }
 
@@ -136,6 +171,7 @@ export const refreshQrCode = async () => {
 
   globalForWa.qrCodeData = "";
   globalForWa.qrGeneratedAt = 0;
+  globalForWa.statusMessage = "Menyegarkan halaman QR Code...";
 
   try {
     const pupPage = (client as any).pupPage;
@@ -170,7 +206,8 @@ export const getWaStatus = () => {
   return { 
     isReady: globalForWa.isReady, 
     qrCodeData: globalForWa.qrCodeData,
-    qrGeneratedAt: globalForWa.qrGeneratedAt || 0
+    qrGeneratedAt: globalForWa.qrGeneratedAt || 0,
+    statusMessage: globalForWa.statusMessage || (globalForWa.isReady ? "Terhubung" : "Menghubungkan...")
   };
 };
 
