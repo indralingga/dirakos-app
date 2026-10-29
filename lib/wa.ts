@@ -100,6 +100,7 @@ function createClientInstance(): Client {
     console.log("QR Code received at", new Date().toISOString());
     globalForWa.qrCodeData = qr;
     globalForWa.qrGeneratedAt = Date.now();
+    globalForWa.isInitializing = false;
     globalForWa.statusMessage = "Menunggu scan QR Code";
   });
 
@@ -110,6 +111,7 @@ function createClientInstance(): Client {
     
     setTimeout(() => {
       globalForWa.isReady = true;
+      globalForWa.isInitializing = false;
       globalForWa.statusMessage = "Terhubung";
       console.log('✅ WA Client is ready to send messages!');
       startCronJobs();
@@ -124,12 +126,14 @@ function createClientInstance(): Client {
   client.on('auth_failure', (msg) => {
     console.error('❌ WA Authentication failure', msg);
     globalForWa.isReady = false;
+    globalForWa.isInitializing = false;
     globalForWa.statusMessage = "Autentikasi gagal. Silakan tautkan ulang.";
   });
 
   client.on('disconnected', (reason) => {
     console.warn('⚠️ WA Client disconnected:', reason);
     globalForWa.isReady = false;
+    globalForWa.isInitializing = false;
     globalForWa.qrCodeData = "";
     globalForWa.statusMessage = "Terputus: " + reason;
   });
